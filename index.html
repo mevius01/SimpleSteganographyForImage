@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PNG画像ステガノグラフィ</title>
+    <style>
+        /* 基本的なリセットとフォント設定 */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif; /* デフォルトのサンセリフフォントを使用 */
+            background-color: #f0f4f8;
+            color: #334155;
+            line-height: 1.5;
+        }
+
+        /* コンテナのスタイル */
+        .container {
+            max-width: 1024px;
+            margin: 24px auto; /* mx-auto と p-6 を組み合わせたもの */
+            background-color: #ffffff;
+            padding: 32px; /* p-8 */
+            border-radius: 12px; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+        }
+
+        /* ヘディングのスタイル */
+        h1 {
+            font-size: 30px; /* text-3xl */
+            font-weight: 700; /* font-bold */
+            text-align: center;
+            margin-bottom: 32px; /* mb-8 */
+            color: #1a202c; /* text-gray-800 */
+        }
+
+        h2 {
+            font-size: 24px; /* text-2xl */
+            font-weight: 600; /* font-semibold */
+            margin-bottom: 16px; /* mb-4 */
+            color: #374151; /* text-gray-700 */
+        }
+
+        /* キャンバスのスタイル */
+        canvas {
+            border: 2px solid #cbd5e1;
+            border-radius: 0.5rem;
+            background-color: #ffffff;
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* テキストエリアのスタイル */
+        textarea {
+            resize: vertical;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow appearance-none */
+            border: 1px solid #e2e8f0; /* border */
+            border-radius: 0.5rem; /* rounded-lg */
+            width: 100%;
+            padding: 8px 12px; /* py-2 px-3 */
+            color: #4a5568; /* text-gray-700 */
+            line-height: 1.25; /* leading-tight */
+            outline: none; /* focus:outline-none */
+        }
+        textarea:focus {
+            ring: 2px solid #3b82f6; /* focus:ring-2 focus:ring-blue-500 */
+            border-color: #3b82f6;
+        }
+        textarea[readonly] {
+            background-color: #f7fafc; /* bg-gray-100 */
+        }
+
+        /* ボタンの共通スタイル */
+        .button-base {
+            font-weight: 600; /* font-semibold */
+            padding: 8px 16px; /* py-2 px-4 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+            transition: all 0.3s ease-in-out; /* transition duration-300 ease-in-out */
+            width: 100%;
+        }
+
+        .button-primary {
+            background-color: #2563eb; /* bg-blue-600 */
+            color: #ffffff;
+        }
+        .button-primary:hover {
+            background-color: #1d4ed8; /* hover:bg-blue-700 */
+        }
+
+        .button-secondary {
+            background-color: #d1d5db; /* bg-gray-300 */
+            color: #374151; /* text-gray-800 */
+        }
+        .button-secondary:hover {
+            background-color: #9ca3af; /* hover:bg-gray-400 */
+        }
+        .button-secondary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* ファイル入力のスタイル */
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            font-size: 14px; /* text-sm */
+            color: #6b7280; /* text-gray-500 */
+        }
+        input[type="file"]::-webkit-file-upload-button {
+            margin-right: 16px; /* file:mr-4 */
+            padding: 8px 16px; /* file:py-2 file:px-4 */
+            border-radius: 0.5rem; /* file:rounded-lg */
+            border: 0; /* file:border-0 */
+            font-size: 14px; /* file:text-sm */
+            font-weight: 600; /* file:font-semibold */
+            background-color: #eff6ff; /* file:bg-blue-50 */
+            color: #1e40af; /* file:text-blue-700 */
+            cursor: pointer;
+        }
+        input[type="file"]::-webkit-file-upload-button:hover {
+            background-color: #dbeafe; /* hover:file:bg-blue-100 */
+        }
+
+        /* メッセージボックスのスタイル */
+        .message-box {
+            padding: 16px; /* p-4 */
+            border-radius: 0.5rem; /* rounded-lg */
+            font-size: 14px; /* text-sm */
+            margin-bottom: 24px; /* mb-6 */
+        }
+        .message-box.hidden {
+            display: none;
+        }
+        .message-box.success {
+            background-color: #d1fae5; /* bg-green-100 */
+            color: #065f46; /* text-green-800 */
+        }
+        .message-box.error {
+            background-color: #fee2e2; /* bg-red-100 */
+            color: #991b1b; /* text-red-800 */
+        }
+        .message-box.info {
+            background-color: #dbeafe; /* bg-blue-100 */
+            color: #1e40af; /* text-blue-800 */
+        }
+
+        /* グリッドレイアウト */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr; /* デフォルトは1列 */
+            gap: 32px; /* gap-8 */
+        }
+
+        @media (min-width: 768px) { /* md:grid-cols-2 */
+            .grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* セクションのスタイル */
+        .section-panel {
+            padding: 24px; /* p-6 */
+            background-color: #f9fafb; /* bg-gray-50 */
+            border-radius: 8px; /* rounded-lg */
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); /* shadow-inner */
+        }
+
+        /* その他のマージン */
+        .mb-4 { margin-bottom: 16px; }
+        .mb-6 { margin-bottom: 24px; }
+        .mb-8 { margin-bottom: 32px; }
+        .mt-8 { margin-top: 32px; }
+        .w-full { width: 100%; }
+        .block { display: block; }
+        .text-sm { font-size: 14px; }
+        .font-bold { font-weight: 700; }
+        .text-gray-700 { color: #374151; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PNG画像ステガノグラフィアプリ</h1>
+
+        <!-- メッセージ表示エリア -->
+        <div id="messageBox" class="message-box hidden"></div>
+
+        <div class="grid">
+            <!-- エンコードセクション -->
+            <div class="section-panel">
+                <h2>エンコード</h2>
+                <div class="mb-4">
+                    <label for="imageUploadEncode" class="block text-gray-700 text-sm font-bold mb-2">
+                        画像をアップロード（PNG推奨）:
+                    </label>
+                    <input type="file" id="imageUploadEncode" accept="image/png"/>
+                </div>
+                <div class="mb-4">
+                    <label for="textInputEncode" class="block text-gray-700 text-sm font-bold mb-2">
+                        埋め込むテキスト:
+                    </label>
+                    <textarea id="textInputEncode" rows="6" maxlength="100"></textarea>
+                </div>
+                <button id="encodeButton" class="button-base button-primary mb-4">テキストを画像に埋め込む</button>
+                <button id="downloadButton" class="button-base button-secondary" disabled>エンコードされた画像をダウンロード</button>
+            </div>
+
+            <!-- デコードセクション -->
+            <div class="section-panel">
+                <h2>デコード</h2>
+                <div class="mb-4">
+                    <label for="imageUploadDecode" class="block text-gray-700 text-sm font-bold mb-2">
+                        エンコードされた画像をアップロード:
+                    </label>
+                    <input type="file" id="imageUploadDecode" accept="image/*"/>
+                </div>
+                <button id="decodeButton" class="button-base button-primary mb-4">画像からテキストを抽出</button>
+                <div class="mb-4">
+                    <label for="textOutputDecode" class="block text-gray-700 text-sm font-bold mb-2">
+                        抽出されたテキスト:
+                    </label>
+                    <textarea id="textOutputDecode" rows="6" readonly></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- キャンバスエリア -->
+        <div class="mt-8">
+            <h2 class="text-align-center mb-4 text-gray-700">画像プレビュー</h2>
+            <canvas id="imageCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // DOM要素の取得
+        const imageUploadEncode = document.getElementById('imageUploadEncode');
+        const textInputEncode = document.getElementById('textInputEncode');
+        const encodeButton = document.getElementById('encodeButton');
+        const downloadButton = document.getElementById('downloadButton');
+
+        const imageUploadDecode = document.getElementById('imageUploadDecode');
+        const decodeButton = document.getElementById('decodeButton');
+        const textOutputDecode = document.getElementById('textOutputDecode');
+
+        const imageCanvas = document.getElementById('imageCanvas');
+        const ctx = imageCanvas.getContext('2d');
+        const messageBox = document.getElementById('messageBox');
+
+        let originalImage = null; // エンコード用オリジナル画像
+        let encodedImageBlob = null; // エンコード後の画像データ
+
+        // 定数
+        const BITS_PER_PIXEL = 3; // 1ピクセルあたりに埋め込むビット数 (R, G, BのLSB)
+        const MIN_MESSAGE_LENGTH_TO_FIND = 3; // デコード時に検索する最小メッセージ長（バイト）
+        const MAX_MESSAGE_LENGTH_TO_FIND = 100; // デコード時に検索する最大メッセージ長（バイト）
+        const REPETITION_THRESHOLD = 3; // デコード時にパターンが繰り返されると見なす最小回数
+
+        /**
+         * メッセージボックスを表示するヘルパー関数
+         * @param {string} message 表示するメッセージ
+         * @param {'success'|'error'|'info'} type メッセージの種類
+         */
+        function showMessage(message, type) {
+            messageBox.textContent = message;
+            messageBox.className = `message-box ${type}`;
+            messageBox.classList.remove('hidden');
+        }
+
+        /**
+         * メッセージボックスを非表示にするヘルパー関数
+         */
+        function hideMessageBox() {
+            messageBox.classList.add('hidden');
+        }
+
+        /**
+         * 画像をキャンバスに描画する
+         * @param {Image} img 描画するImageオブジェクト
+         */
+        function drawImageToCanvas(img) {
+            imageCanvas.width = img.width;
+            imageCanvas.height = img.height;
+            ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+            ctx.drawImage(img, 0, 0);
+        }
+
+        /**
+         * ファイル入力イベントハンドラ（エンコード用）
+         */
+        imageUploadEncode.addEventListener('change', (event) => {
+            hideMessageBox();
+            const file = event.target.files[0];
+            if (!file) {
+                originalImage = null;
+                return;
+            }
+
+            if (!file.type.startsWith('image/png')) {
+                showMessage('PNG画像を選択してください。', 'error');
+                originalImage = null;
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalImage = img;
+                    drawImageToCanvas(originalImage);
+                    downloadButton.disabled = true; // 新しい画像がアップロードされたらダウンロードボタンを無効にする
+                    showMessage('画像をロードしました。', 'info');
+                };
+                img.onerror = () => {
+                    showMessage('画像の読み込みに失敗しました。', 'error');
+                    originalImage = null;
+                };
+                img.src = e.target.result;
+            };
+            reader.onerror = () => {
+                showMessage('ファイルの読み込みに失敗しました。', 'error');
+                originalImage = null;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        /**
+         * ファイル入力イベントハンドラ（デコード用）
+         */
+        imageUploadDecode.addEventListener('change', (event) => {
+            hideMessageBox();
+            const file = event.target.files[0];
+            if (!file) {
+                textOutputDecode.value = '';
+                return;
+            }
+
+            // PNG以外の画像ファイルも許可
+            if (!file.type.startsWith('image/')) {
+                showMessage('画像ファイルを選択してください（PNG, JPEG, GIFなど）。', 'error');
+                textOutputDecode.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    drawImageToCanvas(img); // デコード対象の画像をキャンバスに表示
+                    showMessage('デコードする画像をロードしました。', 'info');
+                };
+                img.onerror = () => {
+                    showMessage('画像の読み込みに失敗しました。', 'error');
+                    textOutputDecode.value = '';
+                };
+                img.src = e.target.result;
+            };
+            reader.onerror = () => {
+                showMessage('ファイルの読み込みに失敗しました。', 'error');
+                originalImage = null;
+            };
+            reader.readAsDataURL(file);
+        });
+
+
+        /**
+         * テキストを画像にエンコードする関数
+         */
+        encodeButton.addEventListener('click', () => {
+            hideMessageBox();
+            if (!originalImage) {
+                showMessage('まず画像をアップロードしてください。', 'error');
+                return;
+            }
+
+            const text = textInputEncode.value;
+            if (text.length === 0) {
+                showMessage('埋め込むテキストを入力してください。', 'error');
+                return;
+            }
+
+            // MAX_MESSAGE_LENGTH_TO_FINDを考慮してテキストを切り詰める
+            // 日本語文字はUTF-8で1文字あたり1〜3バイトになる可能性があるため、
+            // バイト数ではなく文字数で制限する方がユーザーには分かりやすい。
+            // ただし、埋め込み可能なバイト数は画像サイズに依存するため、
+            // 厳密なバイト数制限はエンコード時に行う。
+            const maxChars = MAX_MESSAGE_LENGTH_TO_FIND;
+            if (text.length > maxChars) {
+                showMessage(`メッセージが長すぎます。最大${maxChars}文字までです。`, 'error');
+                return;
+            }
+
+            try {
+                // テキストをUTF-8バイト配列に変換
+                const encoder = new TextEncoder();
+                const textBytes = encoder.encode(text);
+
+                // 画像データ取得
+                drawImageToCanvas(originalImage); // オリジナル画像を再描画して、クリーンなImageDataを取得
+                const imageData = ctx.getImageData(0, 0, imageCanvas.width, imageCanvas.height);
+                const pixels = imageData.data; // Uint8ClampedArray (R, G, B, A, R, G, B, A, ...)
+
+                // 画像に埋め込める最大ビット数
+                const maxBits = pixels.length * BITS_PER_PIXEL / 4; // R, G, Bチャネルのみ使用
+                // 画像に埋め込める最大バイト数
+                const maxBytes = Math.floor(maxBits / 8);
+
+                // 埋め込むメッセージのバイト数
+                const messageBytesLength = textBytes.length;
+
+                if (messageBytesLength === 0) {
+                    showMessage('埋め込むテキストがありません。', 'error');
+                    return;
+                }
+                if (messageBytesLength > maxBytes) {
+                    showMessage(`メッセージが長すぎます。この画像には最大${maxBytes}バイト埋め込めますが、${messageBytesLength}バイト必要です。`, 'error');
+                    return;
+                }
+
+                // メッセージを画像全体に繰り返し埋め込む
+                let currentBitIndex = 0; // 現在処理中のピクセルデータのビット位置
+                let messageByteIndex = 0; // 現在処理中のメッセージのバイト位置
+
+                // ピクセルデータにメッセージを埋め込む
+                for (let i = 0; i < pixels.length; i += 4) { // RGBAなので4ステップ
+                    // R, G, BチャネルのLSBを使用
+                    for (let channel = 0; channel < 3; channel++) { // 0=R, 1=G, 2=B
+                        if (currentBitIndex < maxBits) {
+                            const byteToEmbed = textBytes[messageByteIndex % messageBytesLength]; // メッセージを繰り返す
+                            const bitToEmbed = (byteToEmbed >> (7 - (currentBitIndex % 8))) & 1; // メッセージのビットを抽出
+
+                            // LSBをクリアし、新しいビットを設定
+                            pixels[i + channel] = (pixels[i + channel] & 0xFE) | bitToEmbed;
+                            currentBitIndex++;
+
+                            if (currentBitIndex % 8 === 0) { // 1バイト埋め込み完了
+                                messageByteIndex++;
+                            }
+                        } else {
+                            // 画像の容量を超えたら終了
+                            break;
+                        }
+                    }
+                }
+
+                // 変更されたImageDataをキャンバスに描画
+                ctx.putImageData(imageData, 0, 0);
+
+                // エンコードされた画像をBlobとして取得し、ダウンロード可能にする
+                imageCanvas.toBlob((blob) => {
+                    encodedImageBlob = blob;
+                    downloadButton.disabled = false;
+                    showMessage('テキストが画像に正常に埋め込まれました。', 'success');
+                }, 'image/png');
+
+            } catch (error) {
+                console.error('エンコードエラー:', error);
+                showMessage('エンコード中にエラーが発生しました: ' + error.message, 'error');
+            }
+        });
+
+        /**
+         * エンコードされた画像をダウンロードする関数
+         */
+        downloadButton.addEventListener('click', () => {
+            if (encodedImageBlob) {
+                const url = URL.createObjectURL(encodedImageBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'encoded_image.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMessage('画像をダウンロードしました。', 'info');
+            } else {
+                showMessage('ダウンロードするエンコードされた画像がありません。', 'error');
+            }
+        });
+
+        /**
+         * 画像からテキストをデコードする関数
+         */
+        decodeButton.addEventListener('click', () => {
+            hideMessageBox();
+            textOutputDecode.value = ''; // 結果をクリア
+
+            const imageData = ctx.getImageData(0, 0, imageCanvas.width, imageCanvas.height);
+            const pixels = imageData.data;
+
+            if (pixels.length === 0) {
+                showMessage('デコードする画像がキャンバスにありません。画像をアップロードしてください。', 'error');
+                return;
+            }
+
+            try {
+                let extractedBits = [];
+                let extractedBytes = [];
+                let decodedMessage = '';
+
+                // ピクセルからLSBを抽出
+                for (let i = 0; i < pixels.length; i += 4) {
+                    for (let channel = 0; channel < 3; channel++) { // R, G, Bチャネル
+                        const bit = pixels[i + channel] & 1; // LSBを抽出
+                        extractedBits.push(bit);
+
+                        if (extractedBits.length % 8 === 0) { // 8ビット集まったら1バイトに変換
+                            let byte = 0;
+                            for (let j = 0; j < 8; j++) {
+                                byte = (byte << 1) | extractedBits[extractedBits.length - 8 + j];
+                            }
+                            extractedBytes.push(byte);
+                        }
+                    }
+                }
+
+                // 抽出されたバイト列から繰り返されるパターンを検索
+                // 可能なすべての開始オフセットとメッセージ長を試す
+                // 抽出されたバイトの長さが短すぎる場合、デコードは不可能
+                if (extractedBytes.length < MIN_MESSAGE_LENGTH_TO_FIND * REPETITION_THRESHOLD) {
+                    showMessage('抽出されたデータが短すぎます。', 'error');
+                    return;
+                }
+
+                // デコードを試みる最大オフセットは、抽出されたバイト列の長さから最小メッセージ長のREPETITION_THRESHOLD倍を引いたもの
+                // これにより、パターンが少なくともREPETITION_THRESHOLD回繰り返されるのに十分なデータがあることを保証する
+                const maxPossibleOffset = extractedBytes.length - (MIN_MESSAGE_LENGTH_TO_FIND * REPETITION_THRESHOLD);
+                
+                for (let len = MIN_MESSAGE_LENGTH_TO_FIND; len <= MAX_MESSAGE_LENGTH_TO_FIND; len++) {
+                    // 各メッセージ長について、可能なすべての開始オフセットを試す
+                    // オフセットは、メッセージ長と繰り返し回数を考慮して、パターンが完全に収まる範囲内である必要がある
+                    for (let startOffset = 0; startOffset <= maxPossibleOffset; startOffset++) {
+                        // 候補となるパターンを抽出するのに十分なデータがあるか確認
+                        if (startOffset + len > extractedBytes.length) {
+                            continue;
+                        }
+                        const candidatePattern = extractedBytes.slice(startOffset, startOffset + len);
+
+                        // パターンが空の場合はスキップ
+                        if (candidatePattern.length === 0) {
+                            continue;
+                        }
+
+                        let repetitions = 0;
+                        let isConsistent = true;
+
+                        // 現在のオフセットからパターンが何回繰り返されているかを確認
+                        for (let i = startOffset; i < extractedBytes.length - len; i += len) {
+                            const currentSegment = extractedBytes.slice(i, i + len);
+                            if (currentSegment.length !== len) {
+                                // 最後のセグメントが短すぎる場合
+                                break;
+                            }
+
+                            let segmentMatch = true;
+                            for (let k = 0; k < len; k++) {
+                                if (candidatePattern[k] !== currentSegment[k]) {
+                                    segmentMatch = false;
+                                    break;
+                                }
+                            }
+
+                            if (segmentMatch) {
+                                repetitions++;
+                            } else {
+                                isConsistent = false;
+                                break;
+                            }
+                        }
+
+                        // 少なくともREPETITION_THRESHOLD回繰り返されており、かつ一貫性がある場合
+                        if (isConsistent && repetitions >= REPETITION_THRESHOLD) {
+                            const decoder = new TextDecoder('utf-8');
+                            decodedMessage = decoder.decode(new Uint8Array(candidatePattern));
+                            break; // メッセージが見つかったのでループを終了
+                        }
+                    }
+                    if (decodedMessage) break; // メッセージが見つかったら外側のループも終了
+                }
+
+                if (decodedMessage) {
+                    textOutputDecode.value = decodedMessage;
+                    showMessage('テキストが正常に抽出されました。', 'success');
+                } else {
+                    showMessage('画像から埋め込まれたテキストが見つかりませんでした。繰り返しパターンが不明か、メッセージが短すぎる可能性があります。', 'error');
+                }
+
+            } catch (error) {
+                console.error('デコードエラー:', error);
+                showMessage('デコード中にエラーが発生しました: ' + error.message, 'error');
+            }
+        });
+    </script>
+</body>
+</html>
